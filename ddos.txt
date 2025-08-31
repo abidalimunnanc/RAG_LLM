@@ -1,0 +1,2 @@
+A DDoS (Distributed Denial of Service) attack overwhelms a targeted server, service, or network with a massive flood of malicious traffic, making it unavailable to legitimate users. Attackers use botnets—networks of compromised devices like computers and phones—to generate the excessive traffic. The goal is to disrupt services, causing downtime, or to extort money, though some attacks may be part of a larger cyber operation.
+ 

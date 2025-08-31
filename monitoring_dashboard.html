@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Application - Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: #1a202c;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card h2 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .status-healthy {
+            color: #38a169;
+        }
+
+        .status-degraded {
+            color: #d69e2e;
+        }
+
+        .status-unhealthy {
+            color: #e53e3e;
+        }
+
+        .logs-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .logs-section h2 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .log-entry {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+
+        .log-entry.info {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            color: #0369a1;
+        }
+
+        .refresh-btn {
+            background: #1a202c;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background: #2d3748;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        .endpoint-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .endpoint-item {
+            background: #f7fafc;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .endpoint-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.25rem;
+        }
+
+        .endpoint-count {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 RAG Application Monitoring Dashboard</h1>
+    </div>
+
+    <div class="container">
+        <button class="refresh-btn" onclick="refreshAllData()">🔄 Refresh All Data</button>
+
+        <div class="dashboard-grid">
+            <!-- Health Status -->
+            <div class="card">
+                <h2>🏥 Health Status</h2>
+                <div id="health-status">
+                    <div class="loading">Loading health status...</div>
+                </div>
+            </div>
+
+            <!-- System Metrics -->
+            <div class="card">
+                <h2>💻 System Metrics</h2>
+                <div id="system-metrics">
+                    <div class="loading">Loading system metrics...</div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card">
+                <h2>⚡ Performance</h2>
+                <div id="performance-metrics">
+                    <div class="loading">Loading performance metrics...</div>
+                </div>
+            </div>
+
+            <!-- Application Status -->
+            <div class="card">
+                <h2>📱 Application Status</h2>
+                <div id="app-status">
+                    <div class="loading">Loading application status...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Endpoint Statistics -->
+        <div class="card">
+            <h2>🔗 Endpoint Statistics</h2>
+            <div id="endpoint-stats">
+                <div class="loading">Loading endpoint statistics...</div>
+            </div>
+        </div>
+
+        <!-- Recent Logs -->
+        <div class="logs-section">
+            <h2>📝 Recent Logs</h2>
+            <div id="recent-logs">
+                <div class="loading">Loading recent logs...</div>
+            </div>
+        </div>
+
+        <!-- Error Logs -->
+        <div class="logs-section">
+            <h2>❌ Recent Errors</h2>
+            <div id="error-logs">
+                <div class="loading">Loading error logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Refresh all data
+        async function refreshAllData() {
+            await Promise.all([
+                loadHealthStatus(),
+                loadSystemMetrics(),
+                loadPerformanceMetrics(),
+                loadAppStatus(),
+                loadEndpointStats(),
+                loadRecentLogs(),
+                loadErrorLogs()
+            ]);
+        }
+
+        // Load health status
+        async function loadHealthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/health`);
+                const data = await response.json();
+                
+                const healthDiv = document.getElementById('health-status');
+                healthDiv.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Status:</span>
+                        <span class="metric-value status-${data.status}">${data.status.toUpperCase()}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Database:</span>
+                        <span class="metric-value">${data.checks?.database || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">CPU Usage:</span>
+                        <span class="metric-value">${data.checks?.cpu_usage || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Memory Usage:</span>
+                        <span class="metric-value">${data.checks?.memory_usage || 'Unknown'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Disk Usage:</span>
+                        <span class="metric-value">${data.checks?.disk_usage || 'Unknown'}</span>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('health-status').innerHTML = 
+                    `<div class="error-message">Error loading health status: ${error.message}</div>`;
+            }
+        }
+
+        // Load system metrics
+        async function loadSystemMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/metrics/system`);
+                const data = await response.json();
+                
+                const metricsDiv = document.getElementById('system-metrics');
+                if (data.system && data.system.latest_metrics) {
+                    const metrics = data.system.latest_metrics;
+                    metricsDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">CPU Usage:</span>
+                            <span class="metric-value">${metrics.cpu_percent.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Memory Usage:</span>
+                            <span class="metric-value">${metrics.memory_percent.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Memory Used:</span>
+                            <span class="metric-value">${(metrics.memory_used_mb / 1024).toFixed(1)} GB</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Disk Usage:</span>
+                            <span class="metric-value">${metrics.disk_usage_percent.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Active Connections:</span>
+                            <span class="metric-value">${metrics.active_connections}</span>
+                        </div>
+                    `;
+                } else {
+                    metricsDiv.innerHTML = '<div class="error-message">No system metrics available</div>';
+                }
+            } catch (error) {
+                document.getElementById('system-metrics').innerHTML = 
+                    `<div class="error-message">Error loading system metrics: ${error.message}</div>`;
+            }
+        }
+
+        // Load performance metrics
+        async function loadPerformanceMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/metrics/performance`);
+                const data = await response.json();
+                
+                const perfDiv = document.getElementById('performance-metrics');
+                if (data.performance) {
+                    const perf = data.performance;
+                    perfDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Total Operations:</span>
+                            <span class="metric-value">${perf.total_operations}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Success Rate:</span>
+                            <span class="metric-value">${(perf.success_rate * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Duration:</span>
+                            <span class="metric-value">${perf.avg_duration.toFixed(3)}s</span>
+                        </div>
+                    `;
+                } else {
+                    perfDiv.innerHTML = '<div class="error-message">No performance metrics available</div>';
+                }
+            } catch (error) {
+                document.getElementById('performance-metrics').innerHTML = 
+                    `<div class="error-message">Error loading performance metrics: ${error.message}</div>`;
+            }
+        }
+
+        // Load application status
+        async function loadAppStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/status`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('app-status');
+                if (data.application) {
+                    const uptimeHours = Math.floor(data.application.uptime_seconds / 3600);
+                    const uptimeMinutes = Math.floor((data.application.uptime_seconds % 3600) / 60);
+                    
+                    statusDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Status:</span>
+                            <span class="metric-value status-${data.application.status}">${data.application.status.toUpperCase()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Uptime:</span>
+                            <span class="metric-value">${uptimeHours}h ${uptimeMinutes}m</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Documents:</span>
+                            <span class="metric-value">${data.database?.document_count || 0}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Version:</span>
+                            <span class="metric-value">${data.application.version}</span>
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = '<div class="error-message">No application status available</div>';
+                }
+            } catch (error) {
+                document.getElementById('app-status').innerHTML = 
+                    `<div class="error-message">Error loading application status: ${error.message}</div>`;
+            }
+        }
+
+        // Load endpoint statistics
+        async function loadEndpointStats() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/endpoints`);
+                const data = await response.json();
+                
+                const statsDiv = document.getElementById('endpoint-stats');
+                if (data.endpoints && data.endpoints.request_counts) {
+                    const requests = data.endpoints.request_counts;
+                    const errors = data.endpoints.error_counts;
+                    
+                    let html = '<div class="endpoint-stats">';
+                    for (const [endpoint, count] of Object.entries(requests)) {
+                        const errorCount = errors[endpoint] || 0;
+                        html += `
+                            <div class="endpoint-item">
+                                <div class="endpoint-name">${endpoint}</div>
+                                <div class="endpoint-count">Requests: ${count}</div>
+                                <div class="endpoint-count">Errors: ${errorCount}</div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                    statsDiv.innerHTML = html;
+                } else {
+                    statsDiv.innerHTML = '<div class="error-message">No endpoint statistics available</div>';
+                }
+            } catch (error) {
+                document.getElementById('endpoint-stats').innerHTML = 
+                    `<div class="error-message">Error loading endpoint statistics: ${error.message}</div>`;
+            }
+        }
+
+        // Load recent logs
+        async function loadRecentLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/logs/recent?limit=10`);
+                const data = await response.json();
+                
+                const logsDiv = document.getElementById('recent-logs');
+                if (data.logs && data.logs.length > 0) {
+                    let html = '';
+                    data.logs.slice(-5).forEach(log => {
+                        const logClass = log.level === 'ERROR' ? 'error' : 'info';
+                        const logContent = JSON.stringify(log, null, 2);
+                        html += `<div class="log-entry ${logClass}">${logContent}</div>`;
+                    });
+                    logsDiv.innerHTML = html;
+                } else {
+                    logsDiv.innerHTML = '<div class="error-message">No recent logs available</div>';
+                }
+            } catch (error) {
+                document.getElementById('recent-logs').innerHTML = 
+                    `<div class="error-message">Error loading recent logs: ${error.message}</div>`;
+            }
+        }
+
+        // Load error logs
+        async function loadErrorLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/monitoring/logs/errors?limit=5`);
+                const data = await response.json();
+                
+                const errorsDiv = document.getElementById('error-logs');
+                if (data.errors && data.errors.length > 0) {
+                    let html = '';
+                    data.errors.forEach(error => {
+                        const errorContent = JSON.stringify(error, null, 2);
+                        html += `<div class="log-entry error">${errorContent}</div>`;
+                    });
+                    errorsDiv.innerHTML = html;
+                } else {
+                    errorsDiv.innerHTML = '<div class="error-message">No error logs available</div>';
+                }
+            } catch (error) {
+                document.getElementById('error-logs').innerHTML = 
+                    `<div class="error-message">Error loading error logs: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshAllData, 30000);
+
+        // Load initial data
+        refreshAllData();
+    </script>
+</body>
+</html>

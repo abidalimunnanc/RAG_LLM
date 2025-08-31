@@ -50,6 +50,7 @@ ollama serve
 
 # Pull a model (in another terminal)
 ollama pull gemma3:1b
+ollama pull nomic-embed-text:v1.5
 ```
 
 ## 🚀 Quick Start
@@ -67,7 +68,7 @@ pip install -r requirements.txt
 
 ### **3. Start the Application**
 ```bash
-python main.py
+python -m uvicorn main:app --reload --port 8000
 ```
 
 ### **4. Access the Application**
